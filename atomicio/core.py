@@ -1,12 +1,32 @@
-
+import tempfile
+import contextlib
+import os
+from typing import Any, Optional, Union
 from pathlib import Path
 from threading import RLock
 from filelock import FileLock
-from atomicwrites import atomic_write
-from typing import Any, Optional, Union, IO
-import os
-
 from .formats import load_data, dump_data, list_supported_formats
+
+@contextlib.contextmanager
+def atomic_write(path, mode="w", encoding=None, overwrite=True):
+    """
+    Escritura atómica de archivos (texto o binario) usando solo la stdlib.
+    Soporta modos "w" y "wb" y encoding opcional.
+    """
+    path = str(path)
+    dirpath = os.path.dirname(os.path.abspath(path))
+    with tempfile.NamedTemporaryFile(delete=False, dir=dirpath, mode=mode, encoding=encoding) as tf:
+        try:
+            yield tf
+            tf.flush()
+            os.fsync(tf.fileno())
+        finally:
+            tf.close()
+    if overwrite:
+        os.replace(tf.name, path)
+    else:
+        os.link(tf.name, path)
+        os.unlink(tf.name)
 
 _thread_lock = RLock()
 
