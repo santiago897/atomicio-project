@@ -5,20 +5,20 @@ FORMAT_REGISTRY: Dict[str, Tuple[Callable[[IO], Any], Callable[[Any, IO], None]]
 
 def register_format(ext: str, loader: Callable[[IO], Any], dumper: Callable[[Any, IO], None]) -> None:
     """
-    Registra un loader/dumper para una extensión de archivo.
+    Registers a loader/dumper for a file extension.
 
     Args:
-        ext: extensión (con o sin punto, ej: '.json' o 'json')
-        loader: función que recibe un file-like y retorna el objeto
-        dumper: función que recibe el objeto y un file-like
+        ext: extension (with or without dot, e.g. '.json' or 'json')
+        loader: function that receives a file-like and returns the object
+        dumper: function that receives the object and a file-like
 
-    Ejemplo:
+    Example:
         from atomicio import register_format
         def csv_loader(f): ...
         def csv_dumper(data, f): ...
         register_format('.csv', csv_loader, csv_dumper)
 
-    Plugins pueden usar entry points en pyproject.toml:
+    Plugins can use entry points in pyproject.toml:
         [tool.poetry.entry-points."atomicio.formats"]
         myplugin = "myplugin.formats:register"
     """
@@ -46,5 +46,5 @@ def dump_data(data, file_obj, suffix: str):
     dumper(data, file_obj)
 
 def list_supported_formats() -> List[str]:
-    """Devuelve una lista de extensiones soportadas actualmente."""
+    """Returns a list of currently supported extensions."""
     return sorted(FORMAT_REGISTRY.keys())

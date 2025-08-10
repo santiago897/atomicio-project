@@ -1,3 +1,4 @@
+import re
 import tempfile
 import contextlib
 import os
@@ -7,11 +8,95 @@ from threading import RLock
 from filelock import FileLock
 from .formats import load_data, dump_data, list_supported_formats
 
+def resolve_path(path: str = None, dirpath: str = None, filename: str = None) -> Path:
+    """
+    Resolves an absolute path from:
+    - an absolute or relative path (param path)
+    - or a combination of dirpath + filename
+    """
+    if path:
+        return Path(path).expanduser().resolve()
+    elif dirpath and filename:
+        return Path(dirpath).expanduser().resolve() / filename
+    else:
+        raise ValueError("Debes pasar 'path' o 'dirpath' y 'filename'.")
+
+def create_file(*, path: str = None, dirpath: str = None, filename: str = None, content: str = "", overwrite: bool = False) -> Path:
+    """
+    Creates a file at the indicated path. If it exists and overwrite=False, raises an exception.
+    You can pass an absolute/relative path, or dirpath+filename.
+    """
+    file_path = resolve_path(path, dirpath, filename)
+    if file_path.exists() and not overwrite:
+        raise FileExistsError(f"El archivo ya existe: {file_path}")
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return file_path
+
+def delete_file(*, path: str = None, dirpath: str = None, filename: str = None, missing_ok: bool = True) -> None:
+    """
+    Deletes a file. If missing_ok=False and it does not exist, raises an exception.
+    You can pass an absolute/relative path, or dirpath+filename.
+    """
+    file_path = resolve_path(path, dirpath, filename)
+    try:
+        file_path.unlink()
+    except FileNotFoundError:
+        if not missing_ok:
+            raise
+
+def find_project_root(start_path=None, git=False):
+    """
+    Searches for the project root from start_path (or cwd) upwards.
+    Considers as root if it finds .git, .venv, .vscode, etc.
+    Returns Path or None if not found.
+    """
+    markers = {'.git', '.venv'}
+
+    if git:
+        markers = {'.git'}
+
+    path = Path(start_path or os.getcwd()).resolve()
+    for parent in [path] + list(path.parents):
+        for marker in markers:
+            if (parent / marker).exists():
+                return parent
+    return None
+
+def find_project_files(pattern: str, dirpath: str = None, recursive: bool = True, ignore_dirs=None):
+    """
+    Searches for files by regex in the project (auto-detected) or in dirpath.
+    - pattern: regex on the file name (not path).
+    - dirpath: if specified, searches there; if not, detects project root.
+    - recursive: searches recursively.
+    - ignore_dirs: list of subdirectory names to ignore (name only, not path).
+    Returns a list of absolute Paths.
+    """
+    base_dir = Path(dirpath).expanduser().resolve() if dirpath else find_project_root()
+    if base_dir is None:
+        raise ValueError("No se pudo detectar la raíz del proyecto y no se especificó dirpath.")
+    regex = re.compile(pattern)
+    ignore_dirs = set(ignore_dirs or [])
+    result = []
+    if recursive:
+        for root, dirs, files in os.walk(base_dir):
+            # Filtrar dirs in-place para ignorar subdirectorios
+            dirs[:] = [d for d in dirs if d not in ignore_dirs]
+            for f in files:
+                if regex.search(f):
+                    result.append(Path(root) / f)
+    else:
+        for f in base_dir.iterdir():
+            if f.is_file() and regex.search(f.name):
+                result.append(f)
+    return result
+
 @contextlib.contextmanager
 def atomic_write(path, mode="w", encoding=None, overwrite=True):
     """
-    Escritura atómica de archivos (texto o binario) usando solo la stdlib.
-    Soporta modos "w" y "wb" y encoding opcional.
+    Atomic file writing (text or binary) using only the stdlib.
+    Supports modes "w" and "wb" and optional encoding.
     """
     path = str(path)
     dirpath = os.path.dirname(os.path.abspath(path))
@@ -32,22 +117,22 @@ _thread_lock = RLock()
 
 class SafeFile:
     """
-    Operaciones de archivo seguras (síncronas y atómicas).
+    Safe file operations (synchronous and atomic).
 
-    - Bloqueo inter-proceso con FileLock (.lock file)
-    - Lock en memoria para hilos (thread-safe)
-    - Escritura atómica para evitar corrupciones
-    - Soporte para formatos por extensión (plugins)
+    - Inter-process locking with FileLock (.lock file)
+    - In-memory lock for threads (thread-safe)
+    - Atomic writing to avoid corruption
+    - Support for formats by extension (plugins)
 
-    Ejemplo de uso:
+    Example usage:
         from atomicio import SafeFile
-        sf = SafeFile('archivo.yaml')
+        sf = SafeFile('file.yaml')
         with sf.locked() as f:
             data = f.read() or {}
             data['x'] = 1
             f.write(data)
 
-    Para agregar soporte a nuevos formatos:
+    To add support for new formats:
         from atomicio import register_format
         def my_loader(f: IO): ...
         def my_dumper(data, f: IO): ...
@@ -58,10 +143,56 @@ class SafeFile:
         self.path = Path(path)
         self.file_lock = FileLock(str(self.path) + ".lock", timeout=timeout)
 
+    def __enter__(self):
+        _thread_lock.acquire()
+        self.file_lock.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        import time
+        # Intentar liberar el file_lock hasta 3 veces
+        for attempt in range(3):
+            try:
+                self.file_lock.release()
+                break
+            except Exception as e:
+                if attempt == 2:
+                    print(f"[SafeFile] No se pudo liberar file_lock tras 3 intentos: {e}")
+                else:
+                    time.sleep(0.1)
+        # Intentar liberar el thread_lock hasta 3 veces
+        for attempt in range(3):
+            try:
+                _thread_lock.release()
+                break
+            except Exception as e:
+                if attempt == 2:
+                    print(f"[SafeFile] No se pudo liberar thread_lock tras 3 intentos: {e}")
+                else:
+                    time.sleep(0.1)
+
+        # Si el archivo está en un repo git, asegurar que .gitignore incluya '*.lock'
+        try:
+            project_root = find_project_root(self.path, git=True)
+            if project_root:
+                gitignore_path = project_root / '.gitignore'
+                lock_pattern = '*.lock\n'
+                if gitignore_path.exists():
+                    with open(gitignore_path, 'r+', encoding='utf-8') as f:
+                        lines = f.readlines()
+                        if not any(line.strip() == '*.lock' for line in lines):
+                            if lines and not lines[-1].endswith('\n'):
+                                f.write('\n')
+                            f.write(lock_pattern)
+                else:
+                    with open(gitignore_path, 'w', encoding='utf-8') as f:
+                        f.write(lock_pattern)
+        except Exception as e:
+            print(f"[SafeFile] Advertencia: No se pudo asegurar la exclusión de '*.lock' en .gitignore: {e}")
+
     def read(self) -> Optional[Any]:
         """
-        Reads and deserializes the file according to its extension. Returns None if it does not exist. (English)
-        Lee y deserializa el archivo según su extensión. Devuelve None si no existe. (Español)
+        Reads and deserializes the file according to its extension. Returns None if it does not exist.
         """
         with _thread_lock:
             with self.file_lock:
@@ -77,8 +208,7 @@ class SafeFile:
 
     def write(self, data: Any) -> None:
         """
-        Serializes and writes data atomically according to the file extension. (English)
-        Serializa y escribe datos de forma atómica según la extensión. (Español)
+        Serializes and writes data atomically according to the file extension.
         """
         with _thread_lock:
             with self.file_lock:
@@ -90,8 +220,7 @@ class SafeFile:
 
     def append(self, text: str) -> None:
         """
-        Appends text to the end of the file under lock (not atomic). (English)
-        Agrega texto al final del archivo bajo lock (no atómico). (Español)
+        Appends text to the end of the file under lock (not atomic).
         """
         with _thread_lock:
             with self.file_lock:
@@ -103,8 +232,7 @@ class SafeFile:
 
     def read_bytes(self) -> Optional[bytes]:
         """
-        Reads the file as bytes. Returns None if it does not exist. (English)
-        Lee el archivo como bytes. Devuelve None si no existe. (Español)
+        Reads the file as bytes. Returns None if it does not exist.
         """
         with _thread_lock:
             with self.file_lock:
@@ -117,8 +245,7 @@ class SafeFile:
 
     def write_bytes(self, data: bytes) -> None:
         """
-        Writes bytes atomically. (English)
-        Escribe bytes de forma atómica. (Español)
+        Writes bytes atomically.
         """
         with _thread_lock:
             with self.file_lock:
@@ -130,10 +257,9 @@ class SafeFile:
 
     def locked(self) -> 'SafeFile._LockedContext':
         """
-        Context manager for manual locking (threads + process). (English)
-        Context manager para lock manual (hilos + proceso). (Español)
+        Context manager for manual locking (threads + process).
 
-        Usage / Uso:
+        Usage:
             with SafeFile('file.yaml').locked() as sf:
                 data = sf.read()
                 data['x'] = 1
@@ -149,18 +275,52 @@ class SafeFile:
                 return self.outer
 
             def __exit__(self, exc_type, exc, tb):
+                import time
+                # Intentar liberar el file_lock hasta 3 veces
+                for attempt in range(3):
+                    try:
+                        self.file_lock.release()
+                        break
+                    except Exception as e:
+                        if attempt == 2:
+                            print(f"[SafeFile] No se pudo liberar file_lock tras 3 intentos: {e}")
+                        else:
+                            time.sleep(0.1)
+                # Intentar liberar el thread_lock hasta 3 veces
+                for attempt in range(3):
+                    try:
+                        _thread_lock.release()
+                        break
+                    except Exception as e:
+                        if attempt == 2:
+                            print(f"[SafeFile] No se pudo liberar thread_lock tras 3 intentos: {e}")
+                        else:
+                            time.sleep(0.1)
+
+                # Si el archivo está en un repo git, asegurar que .gitignore incluya '*.lock'
                 try:
-                    self.outer.file_lock.release()
-                finally:
-                    _thread_lock.release()
+                    project_root = find_project_root(self.path, git=True)
+                    if project_root:
+                        gitignore_path = project_root / '.gitignore'
+                        lock_pattern = '*.lock\n'
+                        if gitignore_path.exists():
+                            with open(gitignore_path, 'r+', encoding='utf-8') as f:
+                                lines = f.readlines()
+                                if not any(line.strip() == '*.lock' for line in lines):
+                                    if lines and not lines[-1].endswith('\n'):
+                                        f.write('\n')
+                                    f.write(lock_pattern)
+                        else:
+                            with open(gitignore_path, 'w', encoding='utf-8') as f:
+                                f.write(lock_pattern)
+                except Exception as e:
+                    print(f"[SafeFile] Advertencia: No se pudo asegurar la exclusión de '*.lock' en .gitignore: {e}")
 
         return _LockedContext(self)
 
     @staticmethod
-    @staticmethod
     def supported_formats() -> list:
         """
-        Lists currently supported file extensions. (English)
-        Lista las extensiones soportadas actualmente. (Español)
+        Lists currently supported file extensions.
         """
         return list_supported_formats()
