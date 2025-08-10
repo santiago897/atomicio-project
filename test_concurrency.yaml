@@ -1,0 +1,19 @@
+counter: 400
+last_access:
+    proc-0: 1754851133.669898
+    proc-1: 1754851134.1194708
+    proc-2: 1754851134.291071
+    thread-0: 1754851132.38333
+    thread-1: 1754851131.8904433
+    thread-2: 1754851132.298481
+    thread-3: 1754851132.3416278
+    thread-4: 1754851132.3524415
+writes:
+    proc-0: 50
+    proc-1: 50
+    proc-2: 50
+    thread-0: 50
+    thread-1: 50
+    thread-2: 50
+    thread-3: 50
+    thread-4: 50
