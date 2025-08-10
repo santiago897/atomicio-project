@@ -24,6 +24,7 @@ def main():
     Uses argparse to expose reading, writing, and listing supported formats. (English)
     Usa argparse para exponer lectura, escritura y listado de formatos soportados. (Español)
     """
+    from .core import SafeFile
     examples = [
         "python -m atomicio read config.yaml",
         "python -m atomicio write config.json '{\"foo\": 1}'",
