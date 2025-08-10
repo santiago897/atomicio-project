@@ -3,21 +3,6 @@ import json
 import argparse
 from pathlib import Path
 
-def main():
-    # atomicio CLI
-    # -------------
-    # Herramienta de línea de comandos para operaciones atómicas y seguras sobre archivos con soporte de plugins de formato.
-    #
-    # Comandos:
-    #     read <file> [--as-bytes]     Lee y muestra el archivo (auto-detecta formato)
-    #     write <file> <data> [--as-bytes]  Escribe datos en el archivo (JSON para estructurados)
-    #     formats                      Lista los formatos soportados
-    #
-    # Ejemplos:
-    #     python -m atomicio read config.yaml
-    #     python -m atomicio write config.json '{"foo": 1}'
-    from .core import SafeFile
-
 
 # atomicio CLI
 # -------------
@@ -31,6 +16,7 @@ def main():
 # Ejemplos:
 #     python -m atomicio read config.yaml
 #     python -m atomicio write config.json '{"foo": 1}'
+
 def main():
     """
     Entry point for the atomicio CLI. (English)
