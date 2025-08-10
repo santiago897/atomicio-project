@@ -1,8 +1,18 @@
+[tool.poetry]
 name = "atomicio"
 version = "0.1.0"
 description = "Atomic locked file operations with plugin format support"
 authors = ["Santiago Matta <santiagomatta@outlook.cl>"]
 readme = "README.md"
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3.8",
+	"License :: OSI Approved :: MIT License",
+	"Operating System :: OS Independent",
+	"Development Status :: 4 - Beta",
+	"Intended Audience :: Developers",
+	"Topic :: Software Development :: Libraries :: Python Modules"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8"
@@ -24,16 +34,8 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 
-[tool.poetry.classifiers]
-classifiers = [
-	"Programming Language :: Python :: 3",
-	"Programming Language :: Python :: 3.8",
-	"License :: OSI Approved :: MIT License",
-	"Operating System :: OS Independent",
-	"Development Status :: 4 - Beta",
-	"Intended Audience :: Developers",
-	"Topic :: Software Development :: Libraries :: Python Modules"
-]
+
+
 
 [tool.poetry.extras]
 yaml = ["pyyaml"]
