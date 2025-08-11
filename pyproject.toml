@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "atomicio"
-version = "0.2.0"
+version = "0.2.1"
 description = "Atomic locked file operations with plugin format support"
 authors = ["Santiago Matta <santiagomatta@outlook.cl>"]
 readme = "README.md"
