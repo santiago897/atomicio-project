@@ -16,6 +16,12 @@
 
 ## API Reference (Python)
 
+
+### Imports
+```python
+from atomicio import resolve_path, create_file, delete_file, find_project_root, find_project_files, SafeFile
+```
+
 ### resolve_path
 ```python
 resolve_path(path: str = None, dirpath: str = None, filename: str = None) -> Path
@@ -84,7 +90,39 @@ with sf.locked() as f:
 
 ### Plugin Support: Registering New Formats
 
-atomicio supports external plugins for file formats using Python entry points. To add support for a new format from another package:
+
+atomicio allows you to extend its file format support by registering your own loader and dumper functions for any file extension using the `register_format` function.
+
+#### Purpose
+`register_format` lets you add support for custom file formats (e.g., CSV, XML, INI, etc.) so you can use all the atomic and safe file operations of atomicio with your own data types. This makes atomicio adaptable to any workflow or project, not just the built-in formats (YAML, JSON, TOML, TXT).
+
+#### How it helps
+- Integrate your own serialization/deserialization logic for any extension.
+- Use the same SafeFile API for your custom formats.
+- Share new formats as plugins or just register them at runtime.
+
+#### Usage Example
+Suppose you want to add support for CSV files:
+```python
+from atomicio import register_format, SafeFile
+import csv
+
+def csv_loader(f):
+    return list(csv.reader(f))
+
+def csv_dumper(data, f):
+    writer = csv.writer(f)
+    writer.writerows(data)
+
+register_format('.csv', csv_loader, csv_dumper)
+
+sf = SafeFile('data.csv')
+sf.write([[1,2,3],[4,5,6]])
+print(sf.read())  # Output: [[1, 2, 3], [4, 5, 6]]
+```
+
+#### Plugin System
+You can also distribute your format as a plugin using entry points:
 
 1. In your package's `setup.py` or `pyproject.toml`, declare an entry point under `atomicio.formats`:
 
@@ -137,6 +175,12 @@ python -m atomicio formats
 ---
 
 ## Referencia de la API (Python)
+
+
+### Imports
+```python
+from atomicio import resolve_path, create_file, delete_file, find_project_root, find_project_files, SafeFile
+```
 
 ### resolve_path
 ```python
@@ -206,7 +250,39 @@ with sf.locked() as f:
 
 ### Soporte de Plugins: Registrar Nuevos Formatos
 
-atomicio soporta plugins externos para formatos de archivo usando entry points de Python. Para agregar soporte a un nuevo formato desde otro paquete:
+
+atomicio te permite extender el soporte de formatos de archivo registrando tus propias funciones de carga y guardado para cualquier extensión usando la función `register_format`.
+
+#### Objetivo
+`register_format` te permite agregar soporte para formatos personalizados (por ejemplo, CSV, XML, INI, etc.) y así aprovechar todas las operaciones atómicas y seguras de atomicio con tus propios tipos de datos. Esto hace que atomicio sea adaptable a cualquier flujo de trabajo o proyecto, no solo a los formatos integrados (YAML, JSON, TOML, TXT).
+
+#### ¿Cómo te ayuda?
+- Integra tu propia lógica de serialización/deserialización para cualquier extensión.
+- Usa la misma API de SafeFile para tus formatos personalizados.
+- Puedes compartir nuevos formatos como plugins o simplemente registrarlos en tiempo de ejecución.
+
+#### Ejemplo de uso
+Supón que quieres agregar soporte para archivos CSV:
+```python
+from atomicio import register_format, SafeFile
+import csv
+
+def csv_loader(f):
+    return list(csv.reader(f))
+
+def csv_dumper(data, f):
+    writer = csv.writer(f)
+    writer.writerows(data)
+
+register_format('.csv', csv_loader, csv_dumper)
+
+sf = SafeFile('data.csv')
+sf.write([[1,2,3],[4,5,6]])
+print(sf.read())  # Salida: [[1, 2, 3], [4, 5, 6]]
+```
+
+#### Sistema de plugins
+También puedes distribuir tu formato como plugin usando entry points:
 
 1. En el `setup.py` o `pyproject.toml` de tu paquete, declara un entry point bajo `atomicio.formats`:
 
@@ -247,135 +323,3 @@ python -m atomicio formats
 
 ## License
 MIT
-
-# atomicio (Español)
-
-## Operaciones atómicas y seguras sobre archivos con soporte de plugins de formato
-
-### Características
-- Operaciones de archivo atómicas y seguras para hilos
-- Bloqueo entre procesos (FileLock)
-- Sistema de plugins para formatos personalizados (via entry points)
-- CLI para leer, escribir y listar formatos soportados
-
-### Uso del CLI
-
-```
-python -m atomicio read <archivo> [--as-bytes]
-python -m atomicio write <archivo> <datos> [--as-bytes]
-python -m atomicio formats
-```
-
-#### Ejemplos
-
-```
-python -m atomicio read config.yaml
-python -m atomicio write config.json '{"foo": 1}'
-python -m atomicio formats
-```
-
-### Soporte de Plugins: Registrar Nuevos Formatos
-
-atomicio soporta plugins externos para formatos de archivo usando entry points de Python. Para agregar soporte a un nuevo formato desde otro paquete:
-
-1. En el `setup.py` o `pyproject.toml` de tu paquete, declara un entry point bajo `atomicio.formats`:
-
-   ```toml
-   [project.entry-points."atomicio.formats"]
-   miformato = "miplugin.modulo:MiHandlerFormato"
-   ```
-   o en `setup.py`:
-   ```python
-   entry_points={
-       'atomicio.formats': [
-           'miformato = miplugin.modulo:MiHandlerFormato',
-       ],
-   },
-   ```
-2. Implementa la interfaz requerida en tu handler (ver ejemplos en `atomicio/formats.py`).
-3. Instala tu paquete. atomicio detectará y usará tu formato automáticamente.
-
-Atomic, locked file operations with plugin-based format support.
-
-## Features
-- Cross-process file locking (.lock)
-- Thread-safe locks in memory
-- Atomic writes to avoid file corruption
-- Plugin system to add support for new file formats
-- Supports YAML, JSON, TOML, TXT out of the box
-
-## Installation
-
-```bash
-pip install atomicio
-```
-
-## Usage example
-```python
-from atomicio import SafeFile
-
-sf = SafeFile("config.yaml")
-
-with sf.locked() as f:
-    data = f.read() or {}
-    data["counter"] = data.get("counter", 0) + 1
-    f.write(data)
-```
-
-## List supported formats
-```python
-from atomicio import SafeFile
-print(SafeFile.supported_formats())
-# Output: ['.json', '.toml', '.txt', '.yaml', '.yml']
-```
-
-## Extending with plugins (custom formats)
-You can add support for new file formats by registering a loader and dumper:
-
-```python
-from atomicio import register_format, SafeFile
-
-def csv_loader(f):
-    import csv
-    return list(csv.reader(f))
-
-def csv_dumper(data, f):
-    import csv
-    writer = csv.writer(f)
-    writer.writerows(data)
-
-register_format('.csv', csv_loader, csv_dumper)
-
-sf = SafeFile('data.csv')
-sf.write([[1,2,3],[4,5,6]])
-print(sf.read())
-```
-
-
-## Command Line Interface (CLI)
-
-atomicio incluye un CLI para usuarios avanzados:
-
-```bash
-# Leer y mostrar un archivo (auto-detecta formato)
-python -m atomicio read config.yaml
-
-# Escribir datos (JSON para estructurados)
-python -m atomicio write config.json '{"foo": 1}'
-
-# Leer/escribir como bytes
-python -m atomicio read archivo.bin --as-bytes > out.bin
-python -m atomicio write archivo.txt "hola" --as-bytes
-
-# Listar formatos soportados
-python -m atomicio formats
-```
-
-Puedes ver ayuda y ejemplos con:
-```bash
-python -m atomicio --help
-```
-
-## License
-MIT
-
