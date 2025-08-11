@@ -32,10 +32,6 @@ homepage = "https://github.com/santiago897/atomicio-project"
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-
-
-
-
 [tool.poetry.extras]
 yaml = ["pyyaml"]
 toml = ["tomli", "tomli_w"]
@@ -43,6 +39,6 @@ toml = ["tomli", "tomli_w"]
 [tool.poetry.scripts]
 atomicio = "atomicio.__main__:main"
 
-[tool.poetry.entry-points."atomicio.formats"]
+[tool.poetry.plugins."atomicio.formats"]
 # Ejemplo: otros paquetes pueden registrar aquí sus formatos
 # myplugin = "myplugin.formats:register"
