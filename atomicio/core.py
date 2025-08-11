@@ -147,11 +147,31 @@ class SafeFile:
         register_format('.myext', my_loader, my_dumper)
     """
 
-    def __init__(self, path: Union[str, os.PathLike], timeout: int = 10):
+    def __init__(self, path: Union[str, os.PathLike], timeout: Union[bool, int, float, None] = True):
+        """
+        Initialize a SafeFile for atomic, thread-safe, and process-safe file operations.
+
+        Args:
+            path: Path to the file.
+            timeout: Controls how long to wait for the file lock:
+                - True (default): use default timeout (10 seconds)
+                - False or None: wait forever (no timeout)
+                - int or float: wait that many seconds
+        """
         self.path = Path(path)
-        self.file_lock = FileLock(str(self.path) + ".lock", timeout=timeout)
+        # Determine timeout value for FileLock
+        if timeout is True:
+            lock_timeout = 10
+        elif timeout is False or timeout is None:
+            lock_timeout = None
+        else:
+            lock_timeout = timeout
+        self.file_lock = FileLock(str(self.path) + ".lock", timeout=lock_timeout)
 
     def __enter__(self):
+        """
+        Acquire both thread and file lock. Waits according to the timeout policy set in __init__.
+        """
         _thread_lock.acquire()
         self.file_lock.acquire()
         return self

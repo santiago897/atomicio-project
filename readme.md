@@ -64,7 +64,30 @@ files = find_project_files(r"test.*\\.py$", verbose=True)
 ---
 
 ### SafeFile class
+
 Provides atomic, thread-safe, and process-safe file operations with format support.
+
+#### Flexible timeout for file locking
+The `SafeFile` constructor accepts a `timeout` parameter to control how long it waits to acquire the file lock:
+
+- `timeout=True` (default): Waits up to 10 seconds (default behavior).
+- `timeout=False` or `timeout=None`: Waits forever (no timeout, blocks until lock is available).
+- `timeout=int` or `float`: Waits that many seconds.
+
+**Examples:**
+```python
+# Wait up to 5 seconds for the lock
+with SafeFile("config.yaml", timeout=5) as sf:
+    ...
+
+# Wait forever for the lock
+with SafeFile("config.yaml", timeout=False) as sf:
+    ...
+
+# Default behavior (10 seconds)
+with SafeFile("config.yaml") as sf:
+    ...
+```
 
 #### Methods:
 - `read()` – Reads and deserializes the file (by extension). Returns None if not found.
@@ -270,7 +293,30 @@ files = find_project_files(r"test.*\\.py$", verbose=True)
 ---
 
 ### Clase SafeFile
+
 Provee operaciones atómicas, seguras para hilos y procesos, y soporte de formatos.
+
+#### Timeout flexible para el bloqueo de archivos
+El constructor de `SafeFile` acepta un parámetro `timeout` para controlar cuánto tiempo espera para adquirir el lock del archivo:
+
+- `timeout=True` (por defecto): Espera hasta 10 segundos (comportamiento por defecto).
+- `timeout=False` o `timeout=None`: Espera indefinidamente (sin timeout, bloquea hasta que el lock esté disponible).
+- `timeout=int` o `float`: Espera esa cantidad de segundos.
+
+**Ejemplos:**
+```python
+# Espera hasta 5 segundos por el lock
+with SafeFile("config.yaml", timeout=5) as sf:
+    ...
+
+# Espera indefinidamente
+with SafeFile("config.yaml", timeout=False) as sf:
+    ...
+
+# Comportamiento por defecto (10 segundos)
+with SafeFile("config.yaml") as sf:
+    ...
+```
 
 #### Métodos:
 - `read()` – Lee y deserializa el archivo (por extensión). Devuelve None si no existe.
