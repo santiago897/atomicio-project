@@ -93,11 +93,12 @@ def find_project_files(pattern: str, dirpath: str = None, recursive: bool = True
                 result.append(f)
     if verbose:
         if not result:
-            print("Found 0 files.")
+            print("\nFound 0 files.\n")
         else:
-            print(f"Found {len(result)} files:")
+            print(f"---\nFound {len(result)} files:")
             for idx, file in enumerate(result, 1):
                 print(f"  {idx}) filename: {file.name} | path: {file}")
+            print("---\n")
     return result
 
 @contextlib.contextmanager
