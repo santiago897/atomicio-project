@@ -71,7 +71,7 @@ def find_project_files(pattern: str, dirpath: str = None, recursive: bool = True
     - dirpath: if specified, searches there; if not, detects project root.
     - recursive: searches recursively.
     - ignore_dirs: list of subdirectory names to ignore (name only, not path).
-    Returns a list of absolute Paths.
+    Returns a list of absolute Paths, or an empty list if none found and False if could not determine the project root and dirpath was not provided.
     """
     base_dir = Path(dirpath).expanduser().resolve() if dirpath else find_project_root()
     if base_dir is None:
