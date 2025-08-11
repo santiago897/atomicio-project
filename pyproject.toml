@@ -26,7 +26,7 @@ pytest = "^7.0"
 pytest-cov = "^4.0"
 
 [tool.poetry.urls]
-homepage = "https://github.com/santiago897/atomicio"
+homepage = "https://github.com/santiago897/atomicio-project"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
