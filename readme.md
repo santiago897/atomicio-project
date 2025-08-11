@@ -84,7 +84,7 @@ with SafeFile("config.yaml", timeout=5) as sf:
 with SafeFile("config.yaml", timeout=False) as sf:
     ...
 
-# Default behavior (10 seconds)
+# Default behavior (15 seconds)
 with SafeFile("config.yaml") as sf:
     ...
 ```
@@ -313,7 +313,7 @@ with SafeFile("config.yaml", timeout=5) as sf:
 with SafeFile("config.yaml", timeout=False) as sf:
     ...
 
-# Comportamiento por defecto (10 segundos)
+# Comportamiento por defecto (15 segundos)
 with SafeFile("config.yaml") as sf:
     ...
 ```
