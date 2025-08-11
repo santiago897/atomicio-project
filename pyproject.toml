@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "atomicio"
-version = "0.1.8"
+version = "0.2.0"
 description = "Atomic locked file operations with plugin format support"
 authors = ["Santiago Matta <santiagomatta@outlook.cl>"]
 readme = "README.md"
@@ -31,9 +31,6 @@ homepage = "https://github.com/santiago897/atomicio-project"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.extras]
-toml = ["tomli", "tomli_w"]
 
 [tool.poetry.scripts]
 atomicio = "atomicio.__main__:main"
