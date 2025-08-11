@@ -297,17 +297,19 @@ class SafeFile:
             def __init__(self, outer):
                 self.outer = outer
 
+
             def __enter__(self):
                 _thread_lock.acquire()
                 self.outer.file_lock.acquire()
                 return self.outer
+
 
             def __exit__(self, exc_type, exc, tb):
                 import time
                 # Intentar liberar el file_lock hasta 3 veces
                 for attempt in range(3):
                     try:
-                        self.file_lock.release()
+                        self.outer.file_lock.release()
                         break
                     except Exception as e:
                         if attempt == 2:
@@ -327,7 +329,7 @@ class SafeFile:
 
                 # Si el archivo está en un repo git, asegurar que .gitignore incluya '*.lock'
                 try:
-                    project_root = find_project_root(self.path, git=True)
+                    project_root = find_project_root(self.outer.path, git=True)
                     if project_root:
                         gitignore_path = project_root / '.gitignore'
                         lock_pattern = '*.lock\n'
