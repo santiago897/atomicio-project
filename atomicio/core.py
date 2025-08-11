@@ -52,7 +52,7 @@ def find_project_root(start_path=None, git=False):
     Considers as root if it finds .git, .venv, .vscode, etc.
     Returns Path or None if not found.
     """
-    markers = {'.git', '.venv'}
+    markers = {'.git', '.venv', 'venv'}
 
     if git:
         markers = {'.git'}
@@ -64,7 +64,7 @@ def find_project_root(start_path=None, git=False):
                 return parent
     return None
 
-def find_project_files(pattern: str, dirpath: str = None, recursive: bool = True, ignore_dirs=None):
+def find_project_files(pattern: str, dirpath: str = None, recursive: bool = True, ignore_dirs=None, verbose: bool = False):
     """
     Searches for files by regex in the project (auto-detected) or in dirpath.
     - pattern: regex on the file name (not path).
@@ -75,13 +75,14 @@ def find_project_files(pattern: str, dirpath: str = None, recursive: bool = True
     """
     base_dir = Path(dirpath).expanduser().resolve() if dirpath else find_project_root()
     if base_dir is None:
-        raise ValueError("No se pudo detectar la raíz del proyecto y no se especificó dirpath.")
+        if verbose:
+            print("Could not detect project root and dirpath was not specified, returning False...")
+        return False
     regex = re.compile(pattern)
     ignore_dirs = set(ignore_dirs or [])
     result = []
     if recursive:
         for root, dirs, files in os.walk(base_dir):
-            # Filtrar dirs in-place para ignorar subdirectorios
             dirs[:] = [d for d in dirs if d not in ignore_dirs]
             for f in files:
                 if regex.search(f):
@@ -90,6 +91,13 @@ def find_project_files(pattern: str, dirpath: str = None, recursive: bool = True
         for f in base_dir.iterdir():
             if f.is_file() and regex.search(f.name):
                 result.append(f)
+    if verbose:
+        if not result:
+            print("Found 0 files.")
+        else:
+            print(f"Found {len(result)} files:")
+            for idx, file in enumerate(result, 1):
+                print(f"  {idx}) filename: {file.name} | path: {file}")
     return result
 
 @contextlib.contextmanager
@@ -157,7 +165,7 @@ class SafeFile:
                 break
             except Exception as e:
                 if attempt == 2:
-                    print(f"[SafeFile] No se pudo liberar file_lock tras 3 intentos: {e}")
+                    print(f"[SafeFile] Could not release file_lock after 3 attempts: {e}")
                 else:
                     time.sleep(0.1)
         # Intentar liberar el thread_lock hasta 3 veces
@@ -167,7 +175,7 @@ class SafeFile:
                 break
             except Exception as e:
                 if attempt == 2:
-                    print(f"[SafeFile] No se pudo liberar thread_lock tras 3 intentos: {e}")
+                    print(f"[SafeFile] Could not release thread_lock after 3 attempts: {e}")
                 else:
                     time.sleep(0.1)
 
@@ -188,7 +196,7 @@ class SafeFile:
                     with open(gitignore_path, 'w', encoding='utf-8') as f:
                         f.write(lock_pattern)
         except Exception as e:
-            print(f"[SafeFile] Advertencia: No se pudo asegurar la exclusión de '*.lock' en .gitignore: {e}")
+            print(f"[SafeFile] Warning: Could not ensure exclusion of '*.lock' in .gitignore: {e}")
 
     def read(self) -> Optional[Any]:
         """
@@ -283,7 +291,7 @@ class SafeFile:
                         break
                     except Exception as e:
                         if attempt == 2:
-                            print(f"[SafeFile] No se pudo liberar file_lock tras 3 intentos: {e}")
+                            print(f"[SafeFile] Could not release file_lock after 3 attempts: {e}")
                         else:
                             time.sleep(0.1)
                 # Intentar liberar el thread_lock hasta 3 veces
@@ -293,7 +301,7 @@ class SafeFile:
                         break
                     except Exception as e:
                         if attempt == 2:
-                            print(f"[SafeFile] No se pudo liberar thread_lock tras 3 intentos: {e}")
+                            print(f"[SafeFile] Could not release thread_lock after 3 attempts: {e}")
                         else:
                             time.sleep(0.1)
 
@@ -314,7 +322,7 @@ class SafeFile:
                             with open(gitignore_path, 'w', encoding='utf-8') as f:
                                 f.write(lock_pattern)
                 except Exception as e:
-                    print(f"[SafeFile] Advertencia: No se pudo asegurar la exclusión de '*.lock' en .gitignore: {e}")
+                    print(f"[SafeFile] Warning: Could not ensure exclusion of '*.lock' in .gitignore: {e}")
 
         return _LockedContext(self)
 
