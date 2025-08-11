@@ -88,6 +88,52 @@ with sf.locked() as f:
 
 ---
 
+### What is `locked()`? When and why should you use it?
+
+The `locked()` method of `SafeFile` provides a context manager that ensures **exclusive access** to a file, both at the thread and process level. This means that while your code is inside the `with sf.locked():` block, no other thread or process can read or write to the file, preventing race conditions and data corruption.
+
+#### When should you use `locked()`?
+- When you need to perform **multiple operations** on a file as a single atomic transaction (e.g., read, modify, write).
+- When your code may run in **multi-threaded** or **multi-process** environments (e.g., web servers, background jobs, scripts running in parallel).
+- When you want to ensure that **no other process or thread** can interfere with your file operations.
+
+#### Example: Fetching data from an API and saving it atomically
+
+Suppose you want to fetch data from an API and store the result in a JSON file, ensuring that no other process can read or write the file while you are updating it.
+
+```python
+from atomicio import SafeFile
+import requests
+
+# Create the file safely (if it doesn't exist)
+sf = SafeFile.create(dirpath="results", filename="data.json")
+
+# Fetch data from an API
+response = requests.get("https://jsonplaceholder.typicode.com/todos/1")
+api_data = response.json()
+
+# Safely update the file with the new data
+with sf.locked() as f:
+    current = f.read() or {}
+    current["api_result"] = api_data
+    f.write(current)
+```
+
+#### Why is this beneficial?
+- **Prevents race conditions:** If multiple scripts or threads try to update the file at the same time, only one will succeed at a time, ensuring data integrity.
+- **Atomic updates:** The file is never left in a partially written or corrupted state.
+- **Safe for concurrent environments:** Perfect for web servers, cron jobs, or any scenario where multiple processes may access the same file.
+- **Easy to use:** The context manager pattern (`with ... as ...:`) is familiar and Pythonic.
+
+#### Potential
+This pattern allows you to safely:
+- Aggregate results from multiple sources into a single file.
+- Implement simple databases or caches using files.
+- Share state between processes without risk of corruption.
+- Build robust automation scripts that interact with external APIs or data sources.
+
+---
+
 ### Plugin Support: Registering New Formats
 
 
@@ -245,6 +291,52 @@ with sf.locked() as f:
     data["counter"] = data.get("counter", 0) + 1
     f.write(data)
 ```
+
+---
+
+### ¿Qué es `locked()`? ¿Cuándo usarlo y cuáles son sus beneficios?
+
+El método `locked()` de `SafeFile` provee un context manager que asegura **acceso exclusivo** a un archivo, tanto a nivel de hilos como de procesos. Esto significa que, mientras tu código esté dentro del bloque `with sf.locked():`, ningún otro hilo o proceso podrá leer o escribir el archivo, evitando condiciones de carrera y corrupción de datos.
+
+#### ¿Cuándo deberías usar `locked()`?
+- Cuando necesitas realizar **varias operaciones** sobre un archivo como una transacción atómica (por ejemplo, leer, modificar y escribir).
+- Cuando tu código puede ejecutarse en entornos **multihilo** o **multiproceso** (por ejemplo, servidores web, jobs en background, scripts en paralelo).
+- Cuando quieres asegurar que **ningún otro proceso o hilo** interfiera con tus operaciones de archivo.
+
+#### Ejemplo: Consultar una API y guardar el resultado de forma atómica
+
+Supón que quieres consultar una API y guardar el resultado en un archivo JSON, asegurando que ningún otro proceso pueda leer o escribir el archivo mientras lo actualizas.
+
+```python
+from atomicio import SafeFile
+import requests
+
+# Crear el archivo de forma segura (si no existe)
+sf = SafeFile.create(dirpath="results", filename="data.json")
+
+# Consultar datos de una API
+response = requests.get("https://jsonplaceholder.typicode.com/todos/1")
+api_data = response.json()
+
+# Actualizar el archivo de forma segura con los nuevos datos
+with sf.locked() as f:
+    actual = f.read() or {}
+    actual["resultado_api"] = api_data
+    f.write(actual)
+```
+
+#### ¿Por qué es beneficioso?
+- **Evita condiciones de carrera:** Si varios scripts o hilos intentan actualizar el archivo al mismo tiempo, solo uno lo hará a la vez, asegurando la integridad de los datos.
+- **Actualizaciones atómicas:** El archivo nunca queda en un estado parcialmente escrito o corrupto.
+- **Seguro para entornos concurrentes:** Ideal para servidores web, cron jobs o cualquier escenario donde varios procesos acceden al mismo archivo.
+- **Fácil de usar:** El patrón de context manager (`with ... as ...:`) es familiar y Pythonic.
+
+#### Potencial
+Este patrón te permite:
+- Agregar resultados de múltiples fuentes en un solo archivo de forma segura.
+- Implementar bases de datos o cachés simples usando archivos.
+- Compartir estado entre procesos sin riesgo de corrupción.
+- Construir scripts robustos de automatización que interactúan con APIs o fuentes de datos externas.
 
 ---
 
