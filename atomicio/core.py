@@ -93,9 +93,9 @@ def find_project_files(pattern: str, dirpath: str = None, recursive: bool = True
                 result.append(f)
     if verbose:
         if not result:
-            print("\nFound 0 files.\n")
+            print(f"\nFound 0 files with pattern '{pattern}' in '{base_dir}'{' and its subdirs' if recursive else ''}\n")
         else:
-            print(f"---\nFound {len(result)} files:")
+            print(f"---\nFound {len(result)} files with pattern '{pattern}' in '{base_dir}'{' and its subdirs' if recursive else ''}:")
             for idx, file in enumerate(result, 1):
                 print(f"  {idx}) filename: {file.name} | path: {file}")
             print("---\n")
