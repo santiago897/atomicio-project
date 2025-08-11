@@ -158,15 +158,19 @@ class SafeFile:
                 - True (default): use default timeout (10 seconds)
                 - False or None: wait forever (no timeout)
                 - int or float: wait that many seconds
+        Raises:
+            ValueError: If timeout is not a valid type.
         """
         self.path = Path(path)
-        # Determine timeout value for FileLock
+        # Validate and normalize timeout value for FileLock
         if timeout is True:
-            lock_timeout = 10
+            lock_timeout = 15
         elif timeout is False or timeout is None:
-            lock_timeout = None
-        else:
+            lock_timeout = -1
+        elif isinstance(timeout, (int, float)):
             lock_timeout = timeout
+        else:
+            raise ValueError(f"Invalid value for timeout: {timeout!r}. Must be True, False, None, int, or float.")
         self.file_lock = FileLock(str(self.path) + ".lock", timeout=lock_timeout)
 
     def __enter__(self):
