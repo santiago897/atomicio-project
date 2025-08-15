@@ -2178,7 +2178,6 @@ pip install atomicio
   - `filelock ^3.12.2`: For inter-process file locking
   - `pyyaml ^6.0`: For YAML format support
   - `tomli ^2.0.1`: For TOML format support (Python < 3.11)
-  - `atomicwrites ^1.4.1`: For atomic file operations
 
 ### Supported File Formats
 
