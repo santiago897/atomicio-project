@@ -18,6 +18,10 @@ register_format(".yml", yaml_loader, yaml_dumper)
 
 # JSON
 def json_loader(f: IO):
+    content = f.read()
+    if not content.strip():  # Empty or whitespace-only file
+        return None
+    f.seek(0)  # Reset file pointer for json.load
     return json.load(f)
 
 def json_dumper(data, f: IO):
