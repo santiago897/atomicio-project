@@ -1390,7 +1390,8 @@ def robust_file_operation(file_path, data):
         return False
 ```
 
-### 🎯 Best Practices for Exception Handling
+<details>
+<summary><strong>🎯 Best Practices for Exception Handling</strong></summary>
 
 #### **✅ Recommended Patterns**
 - **Specific Exceptions**: Catch specific exceptions (`FileReadError`) rather than generic ones
@@ -1446,6 +1447,8 @@ except FileReadError as e:
     # Provide fallback or default behavior
     result = get_default_config()
 ```
+
+</details>
 
 ---
 
