@@ -1,17 +1,46 @@
 [tool.poetry]
 name = "atomicio"
-version = "1.0.0"
-description = "Atomic locked file operations with plugin format support"
+version = "1.0.1"
+description = "Thread-safe, async-safe, and atomic file operations with extensible format support for Python"
 authors = ["Santiago Matta <santiagomatta@outlook.cl>"]
 readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/santiago897/atomicio-project"
+repository = "https://github.com/santiago897/atomicio-project"
+documentation = "https://github.com/santiago897/atomicio-project/blob/main/README.md"
+keywords = [
+	"atomic",
+	"file-operations",
+	"thread-safe",
+	"async",
+	"locking",
+	"concurrent",
+	"file-locking",
+	"safe-write",
+	"data-integrity"
+]
 classifiers = [
+	"Development Status :: 5 - Production/Stable",
 	"Programming Language :: Python :: 3",
 	"Programming Language :: Python :: 3.8",
+	"Programming Language :: Python :: 3.9",
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Programming Language :: Python :: 3.13",
 	"License :: OSI Approved :: MIT License",
 	"Operating System :: OS Independent",
-	"Development Status :: 4 - Beta",
+	"Operating System :: Microsoft :: Windows",
+	"Operating System :: POSIX :: Linux",
+	"Operating System :: MacOS",
 	"Intended Audience :: Developers",
-	"Topic :: Software Development :: Libraries :: Python Modules"
+	"Topic :: Software Development :: Libraries :: Python Modules",
+	"Topic :: System :: Filesystems",
+	"Topic :: Software Development :: Libraries",
+	"Framework :: AsyncIO",
+	"Framework :: FastAPI",
+	"Natural Language :: English",
+	"Typing :: Typed"
 ]
 
 [tool.poetry.dependencies]
@@ -19,7 +48,7 @@ python = ">=3.8"
 filelock = ">=3.12.0"
 pyyaml = ">=6.0.1"
 tomli = {version = ">=2.0.1", python = "<3.11"}
-tomli_w = {version = ">=1.0.0", python = "<3.11"}
+tomli_w = ">=1.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0"

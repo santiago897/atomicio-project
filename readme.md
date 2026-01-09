@@ -10,6 +10,209 @@
 
 **🔌 Extensible Plugin System**: Seamlessly add support for any file format (CSV, XML, binary, custom) with simple loader/dumper functions. All safety guarantees apply to custom formats automatically!
 
+---
+
+## 🤔 Which Class Should I Use?
+
+<details>
+<summary><strong>📖 Click here for a quick decision guide with real-world examples</strong></summary>
+
+### 🎯 **Quick Decision Tree**
+
+**Ask yourself these questions:**
+
+1. **Are you using `async`/`await` in your code?**
+   - ✅ **YES** → Use **`AsyncSafeFile`**
+   - ❌ **NO** → Continue to question 2
+
+2. **Do you need to perform multiple operations while holding the lock?**
+   - ✅ **YES** → Use **`ThreadedSafeFile`**
+   - ❌ **NO** → Use **`SafeFile`**
+
+---
+
+### 🔒 **Use `SafeFile` when:**
+
+**Perfect for:** Simple scripts, config management, basic data persistence
+
+**Real-world scenarios:**
+- ✅ Saving user preferences in a desktop app
+- ✅ Storing API tokens or configuration files
+- ✅ Quick scripts that read/write JSON, YAML, or TOML
+- ✅ Single-operation file access with minimal complexity
+
+**Example: Configuration Manager**
+```python
+from atomicio import SafeFile
+
+# Simple config management - each operation is independent
+config = SafeFile('app_config.json')
+
+# Read current settings
+settings = config.read() or {}
+
+# Update a setting (single atomic operation)
+settings['theme'] = 'dark'
+config.write(settings)
+
+# Another independent update
+settings = config.read() or {}
+settings['language'] = 'en'
+config.write(settings)
+```
+
+**Why SafeFile here?** Each `read()` and `write()` is independent - no need to hold locks across operations.
+
+---
+
+### 🔗 **Use `ThreadedSafeFile` when:**
+
+**Perfect for:** Data processing pipelines, complex workflows, multi-step operations
+
+**Real-world scenarios:**
+- ✅ Processing data in stages where intermediate steps must be atomic
+- ✅ Read → Modify → Verify → Write workflows
+- ✅ Multi-threaded applications with complex file coordination
+- ✅ Operations where you need to "lock, do multiple things, then unlock"
+
+**Example: Data Processing Pipeline**
+```python
+from atomicio import ThreadedSafeFile
+
+# Process data in multiple steps while holding the lock
+data_file = ThreadedSafeFile('pipeline_data.json', timeout=10.0)
+
+with data_file.locked() as f:
+    # Lock is held during this entire block
+
+    # Step 1: Read raw data
+    data = f.read() or {}
+
+    # Step 2: Validate
+    if not validate_data(data):
+        raise ValueError("Invalid data")
+
+    # Step 3: Transform
+    data['processed'] = transform(data)
+    f.write(data)  # Save intermediate result
+
+    # Step 4: Enrich
+    data['enriched'] = enrich(data)
+    f.write(data)  # Final save
+
+    # Lock automatically released here
+```
+
+**Why ThreadedSafeFile here?** Multiple operations (read, validate, transform, write multiple times) must happen atomically as a sequence. No other thread can access the file during this entire workflow.
+
+**❌ Wrong approach with SafeFile:**
+```python
+# DON'T DO THIS - Race condition risk!
+data_file = SafeFile('pipeline_data.json')
+
+data = data_file.read()  # Lock released here
+# ⚠️ Another thread could modify the file here!
+data['processed'] = transform(data)
+data_file.write(data)  # Lock acquired again - but data might be stale!
+```
+
+---
+
+### ⚡ **Use `AsyncSafeFile` when:**
+
+**Perfect for:** Web servers, async APIs, event-driven applications, high-concurrency services
+
+**Real-world scenarios:**
+- ✅ FastAPI / Quart / Sanic web applications
+- ✅ Discord bots, Telegram bots (async frameworks)
+- ✅ WebSocket servers handling multiple connections
+- ✅ Any application using `asyncio` event loops
+- ✅ High-concurrency services with async I/O
+
+**Example: FastAPI Endpoint**
+```python
+from fastapi import FastAPI
+from atomicio import AsyncSafeFile
+
+app = FastAPI()
+analytics = AsyncSafeFile('user_analytics.json', timeout=5.0)
+
+@app.post("/track-event/")
+async def track_event(user_id: str, event: str):
+    # Non-blocking async file operations
+    async with analytics.locked() as f:
+        # Lock held during entire block (async)
+
+        # Read current analytics
+        data = await f.read() or {}
+
+        # Update user events
+        if user_id not in data:
+            data[user_id] = []
+        data[user_id].append({
+            'event': event,
+            'timestamp': time.time()
+        })
+
+        # Save updated analytics
+        await f.write(data)
+
+    return {"status": "tracked"}
+
+# FastAPI can handle hundreds of concurrent requests
+# without blocking thanks to AsyncSafeFile
+```
+
+**Why AsyncSafeFile here?** FastAPI is async - using `SafeFile` or `ThreadedSafeFile` would block the event loop and kill performance. `AsyncSafeFile` allows hundreds of concurrent requests without blocking.
+
+**❌ Wrong approach with ThreadedSafeFile:**
+```python
+# DON'T DO THIS in async code!
+@app.post("/track-event/")
+async def track_event(user_id: str, event: str):
+    analytics = ThreadedSafeFile('user_analytics.json')
+
+    # ⚠️ This blocks the entire event loop!
+    with analytics.locked() as f:
+        data = f.read()  # Blocking I/O - terrible for async!
+        # While this request waits, ALL other requests are blocked!
+```
+
+---
+
+### 📊 **Quick Comparison Table**
+
+| Scenario | SafeFile | ThreadedSafeFile | AsyncSafeFile |
+|----------|----------|------------------|---------------|
+| **Simple config read/write** | ✅ Perfect | ⚠️ Overkill | ❌ Wrong tool |
+| **Multi-step data processing** | ❌ Race conditions | ✅ Perfect | ❌ Wrong tool |
+| **FastAPI/async web server** | ❌ Blocks event loop | ❌ Blocks event loop | ✅ Perfect |
+| **Desktop app settings** | ✅ Perfect | ⚠️ Overkill | ❌ Wrong tool |
+| **Multi-threaded pipeline** | ❌ No cross-op locking | ✅ Perfect | ❌ Wrong tool |
+| **Discord/Telegram bot** | ❌ Blocks event loop | ❌ Blocks event loop | ✅ Perfect |
+| **Simple script** | ✅ Perfect | ⚠️ Overkill | ❌ Unnecessary complexity |
+| **High-concurrency async** | ❌ Poor performance | ❌ Poor performance | ✅ Perfect |
+
+**Legend:**
+- ✅ **Perfect**: Best choice for this scenario
+- ⚠️ **Overkill**: Works but unnecessarily complex
+- ❌ **Wrong tool**: Don't use - will cause issues
+
+---
+
+### 💡 **Still Not Sure?**
+
+**Default recommendations:**
+1. **Writing a regular Python script or app?** → Start with **`SafeFile`**
+2. **Using `async`/`await` anywhere?** → Use **`AsyncSafeFile`**
+3. **Need complex multi-step operations?** → Use **`ThreadedSafeFile`**
+
+**When in doubt:** Start with `SafeFile` - it's the simplest. Upgrade to `ThreadedSafeFile` only when you need cross-operation locking. Use `AsyncSafeFile` only in async contexts.
+
+</details>
+
+---
+
 ## ✨ Overview & Class Comparison
 
 ### 🔐 **Three Specialized Classes for Different Needs**
@@ -122,7 +325,17 @@ SafeFile is designed for applications that need **basic atomic file operations**
 SafeFile(path, timeout=True)
 ```
 - `path`: File path (str or Path object)
-- `timeout`: Lock timeout (True=blocking, False=non-blocking, number=seconds)
+- `timeout`: Lock acquisition timeout behavior:
+  - `True` (default): 15 seconds timeout
+  - `False` or `None`: Wait forever (infinite blocking)
+  - `int` or `float`: Wait that many seconds (e.g., `5.0`)
+
+**Examples:**
+```python
+SafeFile('config.json')              # 15 second timeout (default)
+SafeFile('config.json', timeout=5.0) # 5 second timeout
+SafeFile('config.json', timeout=None) # Wait forever
+```
 
 #### **Core Methods**
 ```python
@@ -318,10 +531,20 @@ ThreadedSafeFile is designed for applications that need **complex file operation
 
 #### **Constructor**
 ```python
-ThreadedSafeFile(path, timeout=None)
+ThreadedSafeFile(path, timeout=True)
 ```
 - `path`: File path (str or Path object)
-- `timeout`: Lock timeout (None=blocking, number=seconds)
+- `timeout`: Lock acquisition timeout behavior:
+  - `True` (default): 15 seconds timeout
+  - `False` or `None`: Wait forever (infinite blocking)
+  - `int` or `float`: Wait that many seconds (e.g., `5.0`)
+
+**Examples:**
+```python
+ThreadedSafeFile('data.yaml')              # 15 second timeout (default)
+ThreadedSafeFile('data.yaml', timeout=5.0) # 5 second timeout
+ThreadedSafeFile('data.yaml', timeout=None) # Wait forever
+```
 
 #### **Core Methods**
 ```python
@@ -726,10 +949,20 @@ AsyncSafeFile is designed specifically for **asyncio-based applications** that n
 
 #### **Constructor**
 ```python
-AsyncSafeFile(path, timeout=None)
+AsyncSafeFile(path, timeout=True)
 ```
 - `path`: File path (str or Path object)
-- `timeout`: Lock timeout (None=no timeout, number=seconds)
+- `timeout`: Lock acquisition timeout behavior:
+  - `True` (default): 15 seconds timeout
+  - `False` or `None`: Wait forever (infinite blocking)
+  - `int` or `float`: Wait that many seconds (e.g., `5.0`)
+
+**Examples:**
+```python
+AsyncSafeFile('data.json')              # 15 second timeout (default)
+AsyncSafeFile('data.json', timeout=5.0) # 5 second timeout
+AsyncSafeFile('data.json', timeout=None) # Wait forever
+```
 
 #### **Core Async Methods**
 ```python
@@ -1259,7 +1492,110 @@ if __name__ == "__main__":
 
 ---
 
-## � Exception Handling & Error Management
+## ⏱️ Timeout Behavior & Lock Management
+
+### 🎯 Understanding Timeout Parameters
+
+All three Atomicio classes support flexible timeout configuration for lock acquisition. This section explains the timeout behavior in detail.
+
+#### **Timeout Values**
+
+| Value | Behavior | Use Case |
+|-------|----------|----------|
+| `True` (default) | 15 seconds timeout | Production use - prevents deadlocks |
+| `False` or `None` | Wait forever (infinite) | Scripts where you want to always wait |
+| `int` or `float` | Custom timeout (e.g., `5.0`) | Fine-grained control over wait time |
+
+#### **Examples for Each Class**
+
+```python
+from atomicio import SafeFile, ThreadedSafeFile, AsyncSafeFile
+
+# ✅ Default 15 second timeout (recommended for production)
+sf = SafeFile('config.json')                  # timeout=True (default)
+tsf = ThreadedSafeFile('data.yaml')          # timeout=True (default)
+asf = AsyncSafeFile('async_data.json')       # timeout=True (default)
+
+# ⏰ Custom timeout (5 seconds)
+sf = SafeFile('config.json', timeout=5.0)
+tsf = ThreadedSafeFile('data.yaml', timeout=5.0)
+asf = AsyncSafeFile('async_data.json', timeout=5.0)
+
+# ♾️ Wait forever (infinite blocking - use with caution)
+sf = SafeFile('config.json', timeout=None)    # or timeout=False
+tsf = ThreadedSafeFile('data.yaml', timeout=None)
+asf = AsyncSafeFile('async_data.json', timeout=None)
+```
+
+#### **When Timeout Occurs**
+
+When a lock cannot be acquired within the timeout period:
+
+```python
+from atomicio import ThreadedSafeFile, AsyncTimeoutError
+
+# Example: Timeout after 5 seconds
+tsf = ThreadedSafeFile('busy_file.yaml', timeout=5.0)
+
+try:
+    with tsf.locked() as f:
+        data = f.read()
+        f.write(processed_data)
+except AsyncTimeoutError as e:
+    print(f"Could not acquire lock after {e.timeout} seconds")
+    print(f"File: {e.path}")
+    # Handle timeout gracefully (retry, skip, alert, etc.)
+```
+
+#### **Best Practices**
+
+**✅ Recommended:**
+- Use default `timeout=True` (15s) for production applications
+- Set custom timeouts based on your application's SLA requirements
+- Always handle `AsyncTimeoutError` when using timeouts
+- Use `timeout=None` only in scripts where waiting is acceptable
+
+**❌ Avoid:**
+- Don't use `timeout=None` in web applications (can cause hangs)
+- Don't use very short timeouts (<1s) unless necessary
+- Don't ignore `AsyncTimeoutError` exceptions
+
+**Example: Production-Ready Timeout Handling**
+```python
+from atomicio import ThreadedSafeFile, AsyncTimeoutError, FileWriteError
+import time
+
+def robust_file_update(file_path, data, max_retries=3):
+    """Update file with retry logic on timeout."""
+    tsf = ThreadedSafeFile(file_path, timeout=10.0)
+
+    for attempt in range(max_retries):
+        try:
+            with tsf.locked() as f:
+                current = f.read() or {}
+                current.update(data)
+                f.write(current)
+            return True
+
+        except AsyncTimeoutError as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff
+                print(f"Timeout on attempt {attempt + 1}, retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"Failed after {max_retries} attempts")
+                return False
+
+        except FileWriteError as e:
+            print(f"Write error: {e}")
+            return False
+
+    return False
+```
+
+---
+
+## ⚠ Exception Handling & Error Management
 
 ### 🎯 Exception Hierarchy
 

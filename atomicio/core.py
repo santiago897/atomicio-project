@@ -212,13 +212,29 @@ class SafeFile:
         Initialize a SafeFile for atomic, thread-safe, and process-safe file operations.
 
         Args:
-            path: Path to the file.
-            timeout: Controls how long to wait for the file lock:
-                - True (default): use default timeout (10 seconds)
-                - False or None: wait forever (no timeout)
-                - int or float: wait that many seconds
+            path: Path to the file (str or pathlib.Path).
+            timeout: Controls how long to wait for the file lock acquisition:
+                - True (default): Wait up to 15 seconds for lock
+                - False or None: Wait forever (infinite blocking, no timeout)
+                - int or float: Wait that many seconds (e.g., 5.0 for 5 seconds)
+
         Raises:
-            ValueError: If timeout is not a valid type.
+            ValueError: If timeout is not a valid type (True, False, None, int, or float).
+
+        Examples:
+            >>> # Use default 15 second timeout
+            >>> sf = SafeFile('config.json')
+
+            >>> # Custom 5 second timeout
+            >>> sf = SafeFile('config.json', timeout=5.0)
+
+            >>> # Wait forever until lock is available
+            >>> sf = SafeFile('config.json', timeout=None)
+
+            >>> # Read and write operations
+            >>> data = sf.read() or {}
+            >>> data['key'] = 'value'
+            >>> sf.write(data)
         """
         self.path = Path(path)
         # Validate and normalize timeout value for FileLock
@@ -393,13 +409,31 @@ class AsyncSafeFile:
         Initialize an AsyncSafeFile for async atomic and file-safe operations.
 
         Args:
-            path: Path to the file.
-            timeout: Controls how long to wait for the async lock:
-                - True (default): use default timeout (15 seconds)
-                - False or None: wait forever (no timeout)
-                - int or float: wait that many seconds
+            path: Path to the file (str or pathlib.Path).
+            timeout: Controls how long to wait for the async lock acquisition:
+                - True (default): Wait up to 15 seconds for lock
+                - False or None: Wait forever (infinite blocking, no timeout)
+                - int or float: Wait that many seconds (e.g., 5.0 for 5 seconds)
+
         Raises:
-            ValueError: If timeout is not a valid type.
+            ValueError: If timeout is not a valid type (True, False, None, int, or float).
+            AsyncTimeoutError: If lock cannot be acquired within the timeout period.
+
+        Examples:
+            >>> # Use default 15 second timeout
+            >>> asf = AsyncSafeFile('data.json')
+
+            >>> # Custom 5 second timeout
+            >>> asf = AsyncSafeFile('data.json', timeout=5.0)
+
+            >>> # Wait forever until lock is available
+            >>> asf = AsyncSafeFile('data.json', timeout=None)
+
+            >>> # Async operations
+            >>> async with asf.locked() as f:
+            ...     data = await f.read() or {}
+            ...     data['key'] = 'value'
+            ...     await f.write(data)
         """
         self.path = Path(path)
 
@@ -779,13 +813,32 @@ class ThreadedSafeFile:
         Initialize a ThreadedSafeFile for thread-safe atomic file operations.
 
         Args:
-            path: Path to the file.
-            timeout: Controls how long to wait for the thread lock:
-                - True (default): use default timeout (15 seconds)
-                - False or None: wait forever (no timeout)
-                - int or float: wait that many seconds
+            path: Path to the file (str or pathlib.Path).
+            timeout: Controls how long to wait for the thread lock acquisition:
+                - True (default): Wait up to 15 seconds for lock
+                - False or None: Wait forever (infinite blocking, no timeout)
+                - int or float: Wait that many seconds (e.g., 5.0 for 5 seconds)
+
         Raises:
-            ValueError: If timeout is not a valid type.
+            ValueError: If timeout is not a valid type (True, False, None, int, or float).
+            AsyncTimeoutError: If lock cannot be acquired within the timeout period.
+
+        Examples:
+            >>> # Use default 15 second timeout
+            >>> tsf = ThreadedSafeFile('data.yaml')
+
+            >>> # Custom 5 second timeout
+            >>> tsf = ThreadedSafeFile('data.yaml', timeout=5.0)
+
+            >>> # Wait forever until lock is available
+            >>> tsf = ThreadedSafeFile('data.yaml', timeout=None)
+
+            >>> # Cross-operation locking
+            >>> with tsf.locked() as f:
+            ...     data = f.read() or {}
+            ...     data['key'] = 'value'
+            ...     f.write(data)
+            ...     # Lock held during entire block
         """
         self.path = Path(path)
 

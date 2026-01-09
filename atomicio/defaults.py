@@ -1,8 +1,16 @@
 import json
+import sys
 import yaml
-import tomli_w
-import tomli
 from typing import IO
+
+# Handle tomli/tomllib based on Python version
+if sys.version_info >= (3, 11):
+    import tomllib as tomli  # Built-in since Python 3.11
+else:
+    import tomli  # External package for Python < 3.11
+
+# tomli_w is always external (no built-in write support)
+import tomli_w
 
 from .formats import register_format
 
